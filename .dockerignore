@@ -1,0 +1,10 @@
+**/__pycache__
+**/*.pyc
+.pytest_cache
+backend/.pytest_cache
+frontend/node_modules
+frontend/dist
+.git
+.github
+docs
+*.md
