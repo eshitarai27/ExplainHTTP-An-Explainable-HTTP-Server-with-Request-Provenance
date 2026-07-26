@@ -1,0 +1,3 @@
+This file is served by ExplainHTTP's from-scratch static file handler.
+
+Fetch it via: GET /static/hello.txt
