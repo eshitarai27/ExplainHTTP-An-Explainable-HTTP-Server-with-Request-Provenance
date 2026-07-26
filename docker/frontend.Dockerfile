@@ -1,0 +1,20 @@
+# Multi-stage build: compile the Vite app, then serve the static bundle with nginx.
+FROM node:20-slim AS build
+
+WORKDIR /app/frontend
+
+ARG VITE_API_BASE_URL=http://localhost:8080
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+
+COPY frontend/ .
+RUN npm run build
+
+FROM nginx:1.27-alpine
+
+COPY --from=build /app/frontend/dist /usr/share/nginx/html
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
