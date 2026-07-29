@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import ReactFlow, {
   Background,
   Controls,
@@ -9,20 +9,32 @@ import ReactFlow, {
   type Node,
 } from "reactflow";
 import "reactflow/dist/style.css";
+import { Braces, ChevronLeft, ChevronRight, Download, FileCode, Pause, Play, Waypoints } from "lucide-react";
 import { api } from "../lib/api";
 import type { TraceDetail } from "../lib/types";
-import { colorForStage } from "../lib/colors";
+import { colorForStage, STAGE_COLORS } from "../lib/colors";
+import { getChartTheme } from "../lib/chartTheme";
+import { useTheme } from "../lib/theme";
+import { useStepReplay } from "../lib/useStepReplay";
+import PageHeader from "../components/PageHeader";
+import Panel from "../components/Panel";
+import EmptyState from "../components/EmptyState";
 
-const X_SPACING = 220;
-const Y_STAGGER = 70;
+const X_SPACING = 210;
 
-function buildNodes(trace: TraceDetail, activeUpTo: number): Node[] {
+function buildNodes(
+  trace: TraceDetail,
+  activeUpTo: number,
+  focusId: string | null,
+  ct: ReturnType<typeof getChartTheme>
+): Node[] {
   return trace.execution_graph.nodes.map((n, i) => {
     const color = colorForStage(n.label);
     const isActive = activeUpTo < 0 || i <= activeUpTo;
+    const isFocused = focusId === n.id;
     return {
       id: n.id,
-      position: { x: i * X_SPACING, y: i % 2 === 0 ? 0 : Y_STAGGER },
+      position: { x: i * X_SPACING, y: 0 },
       data: {
         label: (
           <div className="flex flex-col items-center gap-0.5 px-1 py-0.5 text-xs">
@@ -32,39 +44,50 @@ function buildNodes(trace: TraceDetail, activeUpTo: number): Node[] {
         ),
       },
       style: {
-        background: isActive ? color : "#89878122",
-        color: isActive ? "white" : "#898781",
-        border: n.status === "error" ? "2px solid #d03b3b" : "1px solid rgba(0,0,0,0.1)",
+        background: isActive ? color : `${ct.inkFaint}22`,
+        color: isActive ? "white" : ct.inkFaint,
+        border: n.status === "error" ? "2px solid #d03b3b" : isFocused ? `2px solid ${ct.ink}` : "1px solid rgba(0,0,0,0.1)",
+        boxShadow: isFocused ? `0 0 0 4px ${color}33` : undefined,
         borderRadius: 10,
         width: 150,
-        transition: "background 0.3s ease, color 0.3s ease",
+        transition: "background 0.3s ease, color 0.3s ease, box-shadow 0.3s ease",
       },
     };
   });
 }
 
-function buildEdges(trace: TraceDetail, activeUpTo: number): Edge[] {
+function buildEdges(
+  trace: TraceDetail,
+  activeUpTo: number,
+  hovered: string | null,
+  ct: ReturnType<typeof getChartTheme>
+): Edge[] {
   return trace.execution_graph.edges.map((e, i) => {
     const active = activeUpTo < 0 || i < activeUpTo;
+    const id = `${e.source}-${e.target}`;
     return {
-      id: `${e.source}-${e.target}`,
+      id,
       source: e.source,
       target: e.target,
-      label: e.relationship,
+      label: hovered === id ? e.relationship : undefined,
       animated: active,
-      style: { stroke: active ? "#2a78d6" : "#89878155" },
-      labelStyle: { fontSize: 10, fill: "#898781" },
-      markerEnd: { type: MarkerType.ArrowClosed, color: "#2a78d6" },
+      style: { stroke: active ? ct.accent : `${ct.inkFaint}55` },
+      labelStyle: { fontSize: 10, fill: ct.inkFaint },
+      labelBgStyle: { fill: ct.surface },
+      markerEnd: { type: MarkerType.ArrowClosed, color: ct.accent },
     };
   });
 }
 
 export default function GraphViewer() {
   const { traceId } = useParams<{ traceId: string }>();
+  const [searchParams] = useSearchParams();
+  const focusId = searchParams.get("focus");
   const [trace, setTrace] = useState<TraceDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [replayStep, setReplayStep] = useState(-1);
-  const timerRef = useRef<number | null>(null);
+  const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
+  const { theme } = useTheme();
+  const ct = getChartTheme(theme);
 
   useEffect(() => {
     if (!traceId) return;
@@ -74,26 +97,32 @@ export default function GraphViewer() {
       .catch(() => setError(`No trace found for ${traceId}`));
   }, [traceId]);
 
-  useEffect(() => () => {
-    if (timerRef.current) window.clearInterval(timerRef.current);
-  }, []);
+  const nodeCount = trace?.execution_graph.nodes.length ?? 0;
+  const { step, playing, play, pause, next, prev } = useStepReplay(nodeCount);
 
-  const nodes = useMemo(() => (trace ? buildNodes(trace, replayStep) : []), [trace, replayStep]);
-  const edges = useMemo(() => (trace ? buildEdges(trace, replayStep) : []), [trace, replayStep]);
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (!trace) return;
+      if (e.key === "ArrowRight") next();
+      else if (e.key === "ArrowLeft") prev();
+      else if (e.key.toLowerCase() === "r") play();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [trace, next, prev, play]);
 
-  const replay = () => {
-    if (!trace) return;
-    if (timerRef.current) window.clearInterval(timerRef.current);
-    let step = 0;
-    setReplayStep(0);
-    timerRef.current = window.setInterval(() => {
-      step += 1;
-      setReplayStep(step);
-      if (step >= trace.execution_graph.nodes.length) {
-        if (timerRef.current) window.clearInterval(timerRef.current);
-      }
-    }, 500);
-  };
+  const nodes = useMemo(
+    () => (trace ? buildNodes(trace, step, focusId, ct) : []),
+    [trace, step, focusId, ct]
+  );
+  const edges = useMemo(
+    () => (trace ? buildEdges(trace, step, hoveredEdge, ct) : []),
+    [trace, step, hoveredEdge, ct]
+  );
+  const usedStages = useMemo(
+    () => Array.from(new Set(trace?.execution_graph.nodes.map((n) => n.type) ?? [])),
+    [trace]
+  );
 
   if (error) {
     return (
@@ -109,56 +138,103 @@ export default function GraphViewer() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col gap-4">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Graph Viewer</h1>
-          <p className="mt-1 text-sm text-ink-muted dark:text-ink-muted-dark tabular">
-            {trace.trace_id}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={replay}
-            className="rounded-md bg-series-1 px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
-          >
-            ▶ Replay request
-          </button>
-          <a
-            href={api.graphExportUrl(trace.trace_id, "json")}
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs text-series-1 hover:underline"
-          >
-            graph.json
-          </a>
-          <a
-            href={api.graphExportUrl(trace.trace_id, "dot")}
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs text-series-1 hover:underline"
-          >
-            graph.dot
-          </a>
-          <a
-            href={api.graphExportUrl(trace.trace_id, "cypher")}
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs text-series-1 hover:underline"
-          >
-            graph.cypher
-          </a>
-          <Link to={`/traces/${trace.trace_id}/timeline`} className="text-xs text-series-1 hover:underline">
-            View timeline →
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="Graph Viewer"
+        description={<span className="mono">{trace.trace_id}</span>}
+        actions={
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 rounded-md border border-hairline p-0.5 dark:border-hairline-dark">
+              <button
+                onClick={prev}
+                disabled={step <= -1}
+                className="rounded p-1 text-ink-muted hover:bg-plane disabled:opacity-30 dark:text-ink-muted-dark dark:hover:bg-plane-dark"
+                aria-label="Previous stage"
+              >
+                <ChevronLeft size={14} strokeWidth={1.75} />
+              </button>
+              <button
+                onClick={playing ? pause : play}
+                className="flex items-center gap-1 rounded bg-series-1 px-2 py-1 text-xs font-medium text-white hover:opacity-90"
+              >
+                {playing ? <Pause size={12} strokeWidth={2} /> : <Play size={12} strokeWidth={2} />}
+                Replay
+              </button>
+              <button
+                onClick={next}
+                disabled={step >= nodeCount - 1}
+                className="rounded p-1 text-ink-muted hover:bg-plane disabled:opacity-30 dark:text-ink-muted-dark dark:hover:bg-plane-dark"
+                aria-label="Next stage"
+              >
+                <ChevronRight size={14} strokeWidth={1.75} />
+              </button>
+            </div>
+            <div className="flex items-center gap-1 text-ink-faint">
+              <a
+                href={api.graphExportUrl(trace.trace_id, "json")}
+                target="_blank"
+                rel="noreferrer"
+                title="Download graph.json"
+                className="rounded p-1.5 hover:bg-plane hover:text-ink-muted dark:hover:bg-plane-dark"
+              >
+                <Braces size={14} strokeWidth={1.75} />
+              </a>
+              <a
+                href={api.graphExportUrl(trace.trace_id, "dot")}
+                target="_blank"
+                rel="noreferrer"
+                title="Download graph.dot"
+                className="rounded p-1.5 hover:bg-plane hover:text-ink-muted dark:hover:bg-plane-dark"
+              >
+                <Waypoints size={14} strokeWidth={1.75} />
+              </a>
+              <a
+                href={api.graphExportUrl(trace.trace_id, "cypher")}
+                target="_blank"
+                rel="noreferrer"
+                title="Download graph.cypher"
+                className="rounded p-1.5 hover:bg-plane hover:text-ink-muted dark:hover:bg-plane-dark"
+              >
+                <FileCode size={14} strokeWidth={1.75} />
+              </a>
+            </div>
+            <Link to={`/traces/${trace.trace_id}/timeline`} className="text-xs text-series-1 hover:underline">
+              View timeline →
+            </Link>
+          </div>
+        }
+      />
 
-      <div className="flex-1 overflow-hidden rounded-lg border border-hairline dark:border-hairline-dark bg-surface dark:bg-surface-dark">
-        <ReactFlow nodes={nodes} edges={edges} fitView proOptions={{ hideAttribution: true }}>
-          <Background gap={24} color="#89878133" />
-          <Controls showInteractive={false} />
-          <MiniMap pannable zoomable style={{ background: "transparent" }} />
-        </ReactFlow>
+      {nodes.length === 0 ? (
+        <Panel className="flex-1">
+          <EmptyState icon={Download} title="This trace has no execution graph." />
+        </Panel>
+      ) : (
+        <Panel className="flex-1 overflow-hidden">
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            fitView
+            proOptions={{ hideAttribution: true }}
+            onEdgeMouseEnter={(_, edge) => setHoveredEdge(edge.id)}
+            onEdgeMouseLeave={() => setHoveredEdge(null)}
+            nodesDraggable={false}
+          >
+            <Background gap={24} color={`${ct.inkFaint}33`} />
+            <Controls showInteractive={false} />
+            <MiniMap pannable zoomable style={{ background: "transparent" }} />
+          </ReactFlow>
+        </Panel>
+      )}
+
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-ink-faint">
+        <span className="font-medium text-ink-muted dark:text-ink-muted-dark">Pipeline stages</span>
+        {usedStages.map((stage) => (
+          <span key={stage} className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: STAGE_COLORS[stage] ?? "#898781" }} />
+            {stage}
+          </span>
+        ))}
+        <span className="ml-auto">←→ to step · R to replay</span>
       </div>
     </div>
   );

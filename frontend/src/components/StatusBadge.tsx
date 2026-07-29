@@ -27,8 +27,28 @@ export function EventStatusBadge({ status }: { status: "ok" | "error" }) {
 
 export function MethodBadge({ method }: { method: string }) {
   return (
-    <span className="tabular inline-flex items-center rounded border border-hairline dark:border-hairline-dark px-1.5 py-0.5 text-xs font-medium text-ink-muted dark:text-ink-muted-dark">
+    <span className="mono inline-flex items-center rounded border border-hairline dark:border-hairline-dark px-1.5 py-0.5 text-xs font-medium text-ink-muted dark:text-ink-muted-dark">
       {method}
+    </span>
+  );
+}
+
+const LEVEL_COLORS: Record<string, string> = {
+  DEBUG: "#898781",
+  INFO: "#2a78d6",
+  WARNING: "#fab219",
+  ERROR: "#d03b3b",
+  CRITICAL: "#d03b3b",
+};
+
+export function LogLevelBadge({ level }: { level: string }) {
+  const color = LEVEL_COLORS[level] ?? "#898781";
+  return (
+    <span
+      className="inline-flex items-center justify-center rounded px-1.5 py-0.5 text-2xs font-semibold tracking-wide"
+      style={{ color, backgroundColor: `${color}1a` }}
+    >
+      {level}
     </span>
   );
 }

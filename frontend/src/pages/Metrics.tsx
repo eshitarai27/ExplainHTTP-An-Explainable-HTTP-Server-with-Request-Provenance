@@ -9,12 +9,16 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { Activity, AlertTriangle, BarChart3, Clock, Radio, Timer } from "lucide-react";
 import { api } from "../lib/api";
 import type { MetricsSnapshot } from "../lib/types";
 import StatTile from "../components/StatTile";
+import PageHeader from "../components/PageHeader";
+import Panel from "../components/Panel";
+import EmptyState from "../components/EmptyState";
 import { colorForStatusCode } from "../lib/colors";
-
-const SERIES_BLUE = "#2a78d6";
+import { getChartTheme } from "../lib/chartTheme";
+import { useTheme } from "../lib/theme";
 
 function statusBucket(code: string): string {
   const n = Number(code);
@@ -26,26 +30,18 @@ function statusBucket(code: string): string {
 
 function ChartCard({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="rounded-lg border border-hairline dark:border-hairline-dark bg-surface dark:bg-surface-dark p-5">
-      <div className="mb-4 text-sm font-medium text-ink-muted dark:text-ink-muted-dark">
-        {title}
-      </div>
-      <div style={{ width: "100%", height: 260 }}>{children}</div>
-    </div>
-  );
-}
-
-function EmptyState() {
-  return (
-    <div className="flex h-full items-center justify-center text-xs text-ink-faint">
-      No data yet
-    </div>
+    <Panel className="p-5">
+      <div className="mb-4 text-sm font-medium text-ink-muted dark:text-ink-muted-dark">{title}</div>
+      <div style={{ width: "100%", height: 240 }}>{children}</div>
+    </Panel>
   );
 }
 
 export default function Metrics() {
   const [metrics, setMetrics] = useState<MetricsSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { theme } = useTheme();
+  const ct = getChartTheme(theme);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,47 +78,46 @@ export default function Metrics() {
     }
   }
   const statusData = Object.entries(buckets).map(([bucket, count]) => ({ bucket, count }));
+  const tooltipStyle = {
+    fontSize: 12,
+    borderRadius: 8,
+    border: `1px solid ${ct.hairline}`,
+    background: ct.surface,
+    color: ct.ink,
+  };
+  const axisTick = { fontSize: 11, fill: ct.inkFaint };
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Metrics</h1>
-        <p className="mt-1 text-sm text-ink-muted dark:text-ink-muted-dark">
-          Runtime numbers gathered directly from the server's own request pipeline.
-        </p>
-      </div>
+      <PageHeader
+        title="Metrics"
+        description="Runtime numbers gathered directly from the server's own request pipeline."
+      />
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-        <StatTile label="Total requests" value={metrics ? String(metrics.total_requests) : "—"} />
+        <StatTile icon={Activity} label="Total requests" value={metrics ? String(metrics.total_requests) : "—"} />
         <StatTile
+          icon={Radio}
           label="Active connections"
           value={metrics ? String(metrics.active_connections) : "—"}
         />
-        <StatTile
-          label="Avg latency"
-          value={metrics ? `${metrics.avg_latency_ms.toFixed(2)} ms` : "—"}
-        />
-        <StatTile label="Errors" value={metrics ? String(metrics.errors) : "—"} />
-        <StatTile
-          label="Uptime"
-          value={metrics ? `${metrics.uptime_seconds.toFixed(0)}s` : "—"}
-        />
+        <StatTile icon={Timer} label="Avg latency" value={metrics ? `${metrics.avg_latency_ms.toFixed(2)} ms` : "—"} />
+        <StatTile icon={AlertTriangle} label="Errors" value={metrics ? String(metrics.errors) : "—"} />
+        <StatTile icon={Clock} label="Uptime" value={metrics ? `${metrics.uptime_seconds.toFixed(0)}s` : "—"} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard title="Requests per route">
           {routeData.length === 0 ? (
-            <EmptyState />
+            <EmptyState icon={BarChart3} title="No route traffic yet" />
           ) : (
             <ResponsiveContainer>
               <BarChart data={routeData} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e1e0d9" vertical={false} />
-                <XAxis dataKey="route" tick={{ fontSize: 11, fill: "#898781" }} />
-                <YAxis tick={{ fontSize: 11, fill: "#898781" }} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e1e0d9" }}
-                />
-                <Bar dataKey="count" fill={SERIES_BLUE} radius={[4, 4, 0, 0]} maxBarSize={48} />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.hairline} vertical={false} />
+                <XAxis dataKey="route" tick={axisTick} />
+                <YAxis tick={axisTick} allowDecimals={false} />
+                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: ct.plane }} />
+                <Bar dataKey="count" fill={ct.accent} radius={[3, 3, 0, 0]} maxBarSize={40} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -130,18 +125,19 @@ export default function Metrics() {
 
         <ChartCard title="Average latency per route (ms)">
           {latencyData.length === 0 ? (
-            <EmptyState />
+            <EmptyState icon={Timer} title="No latency data yet" />
           ) : (
             <ResponsiveContainer>
               <BarChart data={latencyData} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e1e0d9" vertical={false} />
-                <XAxis dataKey="route" tick={{ fontSize: 11, fill: "#898781" }} />
-                <YAxis tick={{ fontSize: 11, fill: "#898781" }} />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.hairline} vertical={false} />
+                <XAxis dataKey="route" tick={axisTick} />
+                <YAxis tick={axisTick} />
                 <Tooltip
-                  contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e1e0d9" }}
+                  contentStyle={tooltipStyle}
+                  cursor={{ fill: ct.plane }}
                   formatter={(value: number) => `${value.toFixed(3)} ms`}
                 />
-                <Bar dataKey="avg_latency_ms" fill={SERIES_BLUE} radius={[4, 4, 0, 0]} maxBarSize={48} />
+                <Bar dataKey="avg_latency_ms" fill={ct.accent} radius={[3, 3, 0, 0]} maxBarSize={40} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -150,15 +146,17 @@ export default function Metrics() {
         <ChartCard title="Response status distribution">
           <ResponsiveContainer>
             <BarChart data={statusData} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e1e0d9" vertical={false} />
-              <XAxis dataKey="bucket" tick={{ fontSize: 11, fill: "#898781" }} />
-              <YAxis tick={{ fontSize: 11, fill: "#898781" }} allowDecimals={false} />
-              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e1e0d9" }} />
-              <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={48}>
+              <CartesianGrid strokeDasharray="3 3" stroke={ct.hairline} vertical={false} />
+              <XAxis dataKey="bucket" tick={axisTick} />
+              <YAxis tick={axisTick} allowDecimals={false} />
+              <Tooltip contentStyle={tooltipStyle} cursor={{ fill: ct.plane }} />
+              <Bar dataKey="count" radius={[3, 3, 0, 0]} maxBarSize={40}>
                 {statusData.map((entry) => (
                   <Cell
                     key={entry.bucket}
-                    fill={colorForStatusCode(entry.bucket === "2xx" ? 200 : entry.bucket === "3xx" ? 300 : entry.bucket === "4xx" ? 400 : 500)}
+                    fill={colorForStatusCode(
+                      entry.bucket === "2xx" ? 200 : entry.bucket === "3xx" ? 300 : entry.bucket === "4xx" ? 400 : 500
+                    )}
                   />
                 ))}
               </Bar>

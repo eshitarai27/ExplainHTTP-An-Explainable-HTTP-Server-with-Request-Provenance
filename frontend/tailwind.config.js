@@ -49,6 +49,20 @@ export default {
       },
       fontFamily: {
         sans: ["system-ui", "-apple-system", "Segoe UI", "sans-serif"],
+        mono: [
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "Consolas",
+          "Liberation Mono",
+          "monospace",
+        ],
+      },
+      fontSize: {
+        "2xs": ["0.6875rem", { lineHeight: "1rem" }],
+      },
+      boxShadow: {
+        popover: "0 4px 16px -4px rgba(11, 11, 11, 0.12), 0 1px 2px rgba(11, 11, 11, 0.06)",
       },
     },
   },

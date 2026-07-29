@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { Search, Waypoints } from "lucide-react";
 import { api } from "../lib/api";
 import type { TraceSummary } from "../lib/types";
 import { MethodBadge, StatusCodeBadge } from "../components/StatusBadge";
+import PageHeader from "../components/PageHeader";
+import Panel from "../components/Panel";
+import EmptyState from "../components/EmptyState";
 
 export default function TraceViewer() {
   const [traces, setTraces] = useState<TraceSummary[]>([]);
@@ -36,20 +40,21 @@ export default function TraceViewer() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Trace Viewer</h1>
-          <p className="mt-1 text-sm text-ink-muted dark:text-ink-muted-dark">
-            Every request gets a trace ID. Inspect its full execution timeline and graph.
-          </p>
-        </div>
-        <input
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder="Filter by path or trace ID…"
-          className="w-64 rounded-md border border-hairline dark:border-hairline-dark bg-surface dark:bg-surface-dark px-3 py-1.5 text-sm outline-none focus:border-series-1"
-        />
-      </div>
+      <PageHeader
+        title="Trace Viewer"
+        description="Every request gets a trace ID. Inspect its full execution timeline and graph."
+        actions={
+          <div className="relative">
+            <Search size={13} strokeWidth={1.75} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-faint" />
+            <input
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="Filter by path or trace ID…"
+              className="w-64 rounded-md border border-hairline bg-surface py-1.5 pl-8 pr-3 text-sm outline-none focus:border-series-1 dark:border-hairline-dark dark:bg-surface-dark"
+            />
+          </div>
+        }
+      />
 
       {error && (
         <div className="rounded-md border border-status-critical/30 bg-status-critical/10 px-4 py-3 text-sm text-status-critical">
@@ -57,10 +62,10 @@ export default function TraceViewer() {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-lg border border-hairline dark:border-hairline-dark bg-surface dark:bg-surface-dark">
+      <Panel className="overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-hairline dark:border-hairline-dark text-left text-xs text-ink-muted dark:text-ink-muted-dark">
+            <tr className="border-b border-hairline text-left text-xs text-ink-muted dark:border-hairline-dark dark:text-ink-muted-dark">
               <th className="px-4 py-2.5 font-normal">Method</th>
               <th className="px-4 py-2.5 font-normal">Path</th>
               <th className="px-4 py-2.5 font-normal">Status</th>
@@ -73,32 +78,32 @@ export default function TraceViewer() {
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-ink-faint">
-                  No traces match.
+                <td colSpan={7}>
+                  <EmptyState
+                    icon={Waypoints}
+                    title={traces.length === 0 ? "No traces recorded yet" : "No traces match your filter"}
+                    hint={traces.length === 0 ? `curl ${api.baseUrl}/hello/world` : undefined}
+                  />
                 </td>
               </tr>
             )}
             {filtered.map((t) => (
               <tr
                 key={t.trace_id}
-                className="border-b border-hairline dark:border-hairline-dark last:border-0 hover:bg-plane dark:hover:bg-plane-dark"
+                className="border-b border-hairline last:border-0 hover:bg-plane dark:border-hairline-dark dark:hover:bg-plane-dark"
               >
                 <td className="px-4 py-2.5">
                   <MethodBadge method={t.request?.method ?? "?"} />
                 </td>
-                <td className="px-4 py-2.5 tabular">{t.request?.path ?? "—"}</td>
+                <td className="mono px-4 py-2.5">{t.request?.path ?? "—"}</td>
                 <td className="px-4 py-2.5">
                   <StatusCodeBadge status={t.response?.status_code ?? 0} />
                 </td>
-                <td className="px-4 py-2.5 tabular text-ink-muted dark:text-ink-muted-dark">
+                <td className="mono px-4 py-2.5 text-ink-muted dark:text-ink-muted-dark">
                   {t.total_duration_ms.toFixed(2)} ms
                 </td>
-                <td className="px-4 py-2.5 tabular text-ink-faint">
-                  {t.request?.client_addr ?? "—"}
-                </td>
-                <td className="px-4 py-2.5 tabular text-xs text-ink-faint">
-                  {t.trace_id.slice(0, 12)}…
-                </td>
+                <td className="mono px-4 py-2.5 text-ink-faint">{t.request?.client_addr ?? "—"}</td>
+                <td className="mono px-4 py-2.5 text-xs text-ink-faint">{t.trace_id.slice(0, 12)}…</td>
                 <td className="px-4 py-2.5">
                   <div className="flex gap-3 text-xs">
                     <Link to={`/traces/${t.trace_id}/timeline`} className="text-series-1 hover:underline">
@@ -113,7 +118,7 @@ export default function TraceViewer() {
             ))}
           </tbody>
         </table>
-      </div>
+      </Panel>
     </div>
   );
 }

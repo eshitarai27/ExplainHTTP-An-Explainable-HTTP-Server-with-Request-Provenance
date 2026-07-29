@@ -1,15 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { ScrollText } from "lucide-react";
 import { api } from "../lib/api";
 import type { LogEntry } from "../lib/types";
-
-const LEVEL_COLORS: Record<string, string> = {
-  DEBUG: "#898781",
-  INFO: "#2a78d6",
-  WARNING: "#fab219",
-  ERROR: "#d03b3b",
-  CRITICAL: "#d03b3b",
-};
+import { LogLevelBadge } from "../components/StatusBadge";
+import PageHeader from "../components/PageHeader";
+import Panel from "../components/Panel";
+import EmptyState from "../components/EmptyState";
 
 export default function Logs() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -37,25 +34,23 @@ export default function Logs() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Logs</h1>
-          <p className="mt-1 text-sm text-ink-muted dark:text-ink-muted-dark">
-            Structured JSON log lines emitted by the server, correlated by trace ID.
-          </p>
-        </div>
-        <select
-          value={levelFilter}
-          onChange={(e) => setLevelFilter(e.target.value)}
-          className="rounded-md border border-hairline dark:border-hairline-dark bg-surface dark:bg-surface-dark px-3 py-1.5 text-sm outline-none"
-        >
-          {levels.map((l) => (
-            <option key={l} value={l}>
-              {l}
-            </option>
-          ))}
-        </select>
-      </div>
+      <PageHeader
+        title="Logs"
+        description="Structured JSON log lines emitted by the server, correlated by trace ID."
+        actions={
+          <select
+            value={levelFilter}
+            onChange={(e) => setLevelFilter(e.target.value)}
+            className="rounded-md border border-hairline bg-surface px-3 py-1.5 text-sm outline-none focus:border-series-1 dark:border-hairline-dark dark:bg-surface-dark"
+          >
+            {levels.map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </select>
+        }
+      />
 
       {error && (
         <div className="rounded-md border border-status-critical/30 bg-status-critical/10 px-4 py-3 text-sm text-status-critical">
@@ -63,28 +58,23 @@ export default function Logs() {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-lg border border-hairline dark:border-hairline-dark bg-surface dark:bg-surface-dark font-mono text-xs">
+      <Panel className="mono overflow-hidden text-xs">
         {filtered.length === 0 && (
-          <div className="px-4 py-8 text-center text-ink-faint">No log entries yet.</div>
+          <EmptyState
+            icon={ScrollText}
+            title={logs.length === 0 ? "No log entries yet" : "No entries match this level"}
+          />
         )}
         {filtered.map((log, i) => (
           <div
             key={i}
-            className="grid grid-cols-[160px_70px_1fr_100px] items-center gap-3 border-b border-hairline dark:border-hairline-dark px-4 py-2 last:border-0 hover:bg-plane dark:hover:bg-plane-dark"
+            className="grid grid-cols-[160px_70px_1fr_100px] items-center gap-3 border-b border-hairline px-4 py-2 last:border-0 hover:bg-plane dark:border-hairline-dark dark:hover:bg-plane-dark"
           >
-            <span className="tabular text-ink-faint">{log.timestamp}</span>
-            <span
-              className="rounded px-1.5 py-0.5 text-center font-semibold"
-              style={{
-                color: LEVEL_COLORS[log.level] ?? "#898781",
-                backgroundColor: `${LEVEL_COLORS[log.level] ?? "#898781"}1a`,
-              }}
-            >
-              {log.level}
-            </span>
-            <span className="truncate text-ink dark:text-ink-dark">{log.message}</span>
+            <span className="text-ink-faint">{log.timestamp}</span>
+            <LogLevelBadge level={log.level} />
+            <span className="truncate font-sans text-ink dark:text-ink-dark">{log.message}</span>
             {log.trace_id ? (
-              <Link to={`/traces/${log.trace_id}/timeline`} className="tabular text-series-1 hover:underline">
+              <Link to={`/traces/${log.trace_id}/timeline`} className="text-series-1 hover:underline">
                 {log.trace_id.slice(0, 10)}…
               </Link>
             ) : (
@@ -92,7 +82,7 @@ export default function Logs() {
             )}
           </div>
         ))}
-      </div>
+      </Panel>
     </div>
   );
 }

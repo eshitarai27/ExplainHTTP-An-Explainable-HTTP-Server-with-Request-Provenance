@@ -9,12 +9,22 @@ body,
 }
 
 body {
-  @apply bg-plane dark:bg-plane-dark text-ink dark:text-ink-dark;
+  @apply bg-plane dark:bg-plane-dark text-ink dark:text-ink-dark antialiased;
   font-variant-numeric: proportional-nums;
+  -webkit-font-smoothing: antialiased;
 }
 
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: rgba(42, 120, 214, 0.25);
 }
 
 ::-webkit-scrollbar {
@@ -26,6 +36,20 @@ body {
   @apply bg-hairline dark:bg-hairline-dark rounded-full;
 }
 
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-baseline dark:bg-baseline-dark;
+}
+
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid #2a78d6;
+  outline-offset: 1px;
+  border-radius: 3px;
+}
+
+button {
+  cursor: pointer;
 }
