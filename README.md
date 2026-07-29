@@ -3,7 +3,7 @@
 An HTTP/1.1 server written from scratch in Python, with a dashboard that
 shows exactly what happens to every request as it moves through the server.
 
-[![CI](https://github.com/eshitarai27/ExplainHTTP-An-Explainable-HTTP-Server-with-Request-Provenance/actions/workflows/ci.yml/badge.svg)](https://github.com/eshitarai27/ExplainHTTP-An-Explainable-HTTP-Server-with-Request-Provenance/actions/workflows/ci.yml)
+[![CI](https://github.com/eshitarai27/ExplainHTTP/actions/workflows/ci.yml/badge.svg)](https://github.com/eshitarai27/ExplainHTTP/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](backend/requirements.txt)
 

@@ -24,7 +24,7 @@ import CodeExcerpt from "../components/overview/CodeExcerpt";
 import Disclosure from "../components/Disclosure";
 import Panel from "../components/Panel";
 
-const REPO_URL = "https://github.com/eshitarai27/ExplainHTTP-An-Explainable-HTTP-Server-with-Request-Provenance";
+const REPO_URL = "https://github.com/eshitarai27/ExplainHTTP";
 const LIVE_API = "https://explainhttp-backend-production.up.railway.app";
 
 const TOC = [
