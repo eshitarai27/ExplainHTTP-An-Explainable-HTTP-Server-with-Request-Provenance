@@ -9,8 +9,13 @@ shows exactly what happens to every request as it moves through the server.
 
 ## Live demo
 
-- Dashboard: https://explainhttp-dashboard.vercel.app
-- API: https://explainhttp-backend-production.up.railway.app
+- **Project tour**: https://explainhttp-dashboard.vercel.app — an interactive
+  walkthrough of the whole system (architecture, request lifecycle, the
+  explainability pipeline, design trade-offs). Start here if you're new to
+  the project.
+- **Dashboard**: https://explainhttp-dashboard.vercel.app/dashboard — the
+  live operational view: traces, execution graphs, metrics, logs.
+- **API**: https://explainhttp-backend-production.up.railway.app
 
 Run `curl https://explainhttp-backend-production.up.railway.app/hello/world`
 and then look that request up in the dashboard's Trace Viewer.
@@ -73,7 +78,11 @@ Send a request and you get back:
 - Lifecycle hooks for extending request handling without touching core
   code (`core/hooks.py`)
 - A dashboard built with React, TypeScript, Tailwind, React Flow, and
-  Recharts
+  Recharts — traces, execution graphs, metrics, and logs, all polling the
+  live API
+- An interactive project tour (`/`) that explains the architecture, the
+  request lifecycle, and the engineering trade-offs behind the server,
+  built on the same design system as the dashboard itself
 
 ## Architecture
 
@@ -285,9 +294,13 @@ ExplainHTTP/
 │   └── app.py, routes.py, server.py, config.py
 ├── frontend/
 │   └── src/
-│       ├── pages/       Dashboard, TraceViewer, ExecutionTimeline, GraphViewer, Metrics, Logs
-│       ├── components/  Layout, StatTile, StatusBadge
-│       └── lib/         API client, shared types, stage color mapping
+│       ├── pages/       ProjectOverview (home), Dashboard, TraceViewer,
+│       │                ExecutionTimeline, GraphViewer, Metrics, Logs
+│       ├── components/  Layout, CommandPalette, Panel, PageHeader,
+│       │                EmptyState, Disclosure, StatTile, StatusBadge,
+│       │                overview/ (tour-specific diagrams and code excerpts)
+│       └── lib/         API client, shared types, theme context, chart
+│                        theming, stage color mapping, animation hooks
 ├── docker/         Dockerfiles and nginx config
 ├── docs/           architecture and API reference
 └── .github/workflows/   CI: pytest matrix, frontend build
